@@ -1,0 +1,133 @@
+version: '3'
+
+services:
+
+  # Spark services
+  spark-master:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    hostname: spark-master
+    ports:
+      - "8080:8080"
+    networks:
+      - spark-airflow-network
+    env_file:
+      - ./data_storage/aws.env
+    environment:
+      - SPARK_MODE=master
+    volumes:
+      - ./jobs:/opt/bitnami/spark/jobs
+
+  spark-worker:
+    image: bitnami/spark:latest
+    container_name: spark-worker
+    hostname: spark-worker
+    depends_on:
+      - spark-master
+    networks:
+      - spark-airflow-network
+    env_file:
+      - ./data_storage/aws.env
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    volumes:
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+
+  # Airflow services
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    networks:
+      - spark-airflow-network
+
+  redis:
+    image: redis:latest
+    networks:
+      - spark-airflow-network
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: airflow-webserver
+    depends_on:
+      - postgres
+      - redis
+      - airflow-init
+    env_file:
+      - ./data_extraction/airflow.env 
+      - ./data_storage/aws.env   
+    ports:
+      - "8081:8080"
+    networks:
+      - spark-airflow-network
+    command: webserver
+    volumes:
+      - ./data_extraction/dags:/opt/airflow/dags
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: airflow-scheduler
+    depends_on:
+      - postgres
+      - redis
+      - airflow-webserver
+    env_file:
+      - ./data_extraction/airflow.env  
+      - ./data_storage/aws.env  
+    networks:
+      - spark-airflow-network
+    command: scheduler
+    volumes:
+      - ./data_extraction/dags:/opt/airflow/dags
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+
+  airflow-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: airflow-worker
+    depends_on:
+      - postgres
+      - redis
+      - airflow-webserver
+    env_file:
+      - ./data_extraction/airflow.env  
+      - ./data_storage/aws.env    
+    networks:
+      - spark-airflow-network
+    command: celery worker
+    volumes:
+      - ./data_extraction/dags:/opt/airflow/dags
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+
+  airflow-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: airflow-init
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ./data_extraction/airflow.env
+      - ./data_storage/aws.env     
+    entrypoint: /bin/bash -c "airflow db init && airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com"
+    networks:
+      - spark-airflow-network
+    volumes:
+      - ./data_extraction/dags:/opt/airflow/dags
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+
+networks:
+  spark-airflow-network:
+    driver: bridge
