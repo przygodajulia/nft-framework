@@ -2,7 +2,6 @@ version: '3'
 
 services:
 
-  # Spark services
   spark-master:
     image: bitnami/spark:latest
     container_name: spark-master
@@ -16,12 +15,49 @@ services:
     environment:
       - SPARK_MODE=master
     volumes:
-      - ./jobs:/opt/bitnami/spark/jobs
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+    
 
-  spark-worker:
+  spark-worker-1:
     image: bitnami/spark:latest
-    container_name: spark-worker
-    hostname: spark-worker
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    depends_on:
+      - spark-master
+    networks:
+      - spark-airflow-network
+    env_file:
+      - ./data_storage/aws.env
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    volumes:
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+
+  spark-worker-2:
+    image: bitnami/spark:latest
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    depends_on:
+      - spark-master
+    networks:
+      - spark-airflow-network
+    env_file:
+      - ./data_storage/aws.env
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    volumes:
+      - ./data_processing/jobs:/opt/bitnami/spark/jobs
+
+  spark-worker-3:
+    image: bitnami/spark:latest
+    container_name: spark-worker-3
+    hostname: spark-worker-3
     depends_on:
       - spark-master
     networks:
@@ -131,3 +167,4 @@ services:
 networks:
   spark-airflow-network:
     driver: bridge
+
