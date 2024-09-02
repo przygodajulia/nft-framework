@@ -167,4 +167,3 @@ services:
 networks:
   spark-airflow-network:
     driver: bridge
-

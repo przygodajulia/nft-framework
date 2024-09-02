@@ -14,5 +14,3 @@
     - Approximate USD value after conversion
 
 
-# project notes
-- should more than one marketplace be taken into account?
