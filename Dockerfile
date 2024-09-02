@@ -10,6 +10,7 @@ RUN apt-get update && \
     pip3 install \
         boto3 \
         pyspark \
+        hvac \
         apache-airflow-providers-apache-spark \
         grpcio-status && \
     # Clean up to reduce image size
