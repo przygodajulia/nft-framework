@@ -1,6 +1,23 @@
-version: '3'
+version: '3.8'
 
 services:
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    networks:
+      - spark-airflow-network
+    volumes:
+      - ./vault/config:/vault/config
+      - ./vault/data:/vault/file
+      - ./vault/tls:/vault/tls
+      - ./vault/scripts:/vault/scripts
+      - ./shared-secrets:/vault/shared-secrets
+    command: /bin/sh -c "vault server -config=/vault/config/vault-config.hcl"
+    restart: unless-stopped
 
   spark-master:
     image: bitnami/spark:latest
@@ -10,13 +27,10 @@ services:
       - "8080:8080"
     networks:
       - spark-airflow-network
-    env_file:
-      - ./data_storage/aws.env
     environment:
       - SPARK_MODE=master
     volumes:
       - ./data_processing/jobs:/opt/bitnami/spark/jobs
-    
 
   spark-worker-1:
     image: bitnami/spark:latest
@@ -26,8 +40,6 @@ services:
       - spark-master
     networks:
       - spark-airflow-network
-    env_file:
-      - ./data_storage/aws.env
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -44,8 +56,6 @@ services:
       - spark-master
     networks:
       - spark-airflow-network
-    env_file:
-      - ./data_storage/aws.env
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -62,8 +72,6 @@ services:
       - spark-master
     networks:
       - spark-airflow-network
-    env_file:
-      - ./data_storage/aws.env
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -98,7 +106,6 @@ services:
       - airflow-init
     env_file:
       - ./data_extraction/airflow.env 
-      - ./data_storage/aws.env   
     ports:
       - "8081:8080"
     networks:
@@ -107,6 +114,7 @@ services:
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./data_processing/jobs:/opt/bitnami/spark/jobs
+      - ./shared-secrets:/shared-secrets
 
   airflow-scheduler:
     build:
@@ -118,14 +126,14 @@ services:
       - redis
       - airflow-webserver
     env_file:
-      - ./data_extraction/airflow.env  
-      - ./data_storage/aws.env  
+      - ./data_extraction/airflow.env 
     networks:
       - spark-airflow-network
     command: scheduler
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./data_processing/jobs:/opt/bitnami/spark/jobs
+      - ./shared-secrets:/shared-secrets
 
   airflow-worker:
     build:
@@ -138,13 +146,13 @@ services:
       - airflow-webserver
     env_file:
       - ./data_extraction/airflow.env  
-      - ./data_storage/aws.env    
     networks:
       - spark-airflow-network
     command: celery worker
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./data_processing/jobs:/opt/bitnami/spark/jobs
+      - ./shared-secrets:/shared-secrets  # Updated volume
 
   airflow-init:
     build:
@@ -155,15 +163,22 @@ services:
       - postgres
       - redis
     env_file:
-      - ./data_extraction/airflow.env
-      - ./data_storage/aws.env     
+      - ./data_extraction/airflow.env   
     entrypoint: /bin/bash -c "airflow db init && airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com"
     networks:
       - spark-airflow-network
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./data_processing/jobs:/opt/bitnami/spark/jobs
+      - ./shared-secrets:/shared-secrets  # Updated volume
+
+secrets:
+  vault_token:
+    external: true
 
 networks:
   spark-airflow-network:
     driver: bridge
+
+volumes:
+  shared-secrets:

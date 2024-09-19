@@ -1,16 +1,25 @@
 # nft-framework
 
+# Starting the project
+1. Provide secrets.txt file for AWS connection and OpenSea API connection
+
+2. Add custom airflow.env file under /data_extraction directory
+
+3. Start docker containers
+```bash
+docker-compose up -d
+```
+4. Go into vault container to run a script that will initalize vault service and add keys specified in a file
+```bash
+docker exec -it vault /bin/sh 
+/vault/scripts/vault-setup.sh
+```
+* might be needed to add relevant permissions on file
+```bash
+chmod 644 /vault/scripts/secrets.txt
+chmod +x /vault/scripts/vault-setup.sh
+```
+
 ## todo's
-- inital architecture setup
-- connect to cryptoslam api to collects 3 months data, and extract:
-    - Transaction sender address
-    - Transaction receiver address
-    - Transaction timestamp
-    - Transaction hash
-    - NFT collection name
-    - NFT collection token identifier
-    - Cryptocurrency amount transacted (if applicable)
-    - Cryptocurrency token used for payment
-    - Approximate USD value after conversion
 
 

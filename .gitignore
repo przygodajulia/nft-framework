@@ -2,7 +2,10 @@
 /data_storage/aws.env 
 /data_extraction/airflow.env
 /data_extraction/api.env
-/vault/config/init-unseal.sh
+/vault/scripts/secrets.txt
+/vault/scripts/init-output.txt
+/vault/data/
+/shared-secrets/
 
 # Visual studio defaults
 __pycache__/
