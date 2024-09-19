@@ -23,5 +23,7 @@ USER airflow
 RUN pip install \
         boto3 \
         pyspark \
+        hvac \
+        azure-servicebus \
         apache-airflow-providers-apache-spark \
         grpcio-status
