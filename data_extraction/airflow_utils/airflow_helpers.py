@@ -1,16 +1,6 @@
-from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
-from airflow.hooks.S3_hook import S3Hook
+import hvac
 from airflow.models import Connection
 from airflow.utils.session import provide_session
-from datetime import datetime, timedelta
-import requests
-import hvac
-
-VAULT_ADDR = 'http://vault:8200'
-
-# Helper functions for setting up connection
-# TODO - store function in some other place
 
 def read_root_token():
     """
@@ -77,7 +67,7 @@ def get_secret_from_vault(path, key):
     except hvac.exceptions.InvalidRequest as e:
         print(f"Invalid request: {e}")
         return None
-
+    
 @provide_session
 def create_aws_connection(session=None):
     """
@@ -123,66 +113,3 @@ def create_aws_connection(session=None):
         print(f"Created new connection: {conn_id}")
     else:
         print(f"Connection {conn_id} already exists.")
-
-# Create AWS connection before the DAG starts
-create_aws_connection()
-
-# Test DAG definition
-default_args = {
-    'owner': 'airflow',
-    'start_date': datetime(2023, 8, 29),
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
-}
-
-dag = DAG(
-    'nft_collections_to_s3',
-    default_args=default_args,
-    description='A test DAG to retrieve NFT collections and save them to S3',
-    schedule_interval=None,
-    catchup=False
-)
-
-def retrieve_nft_collections(**kwargs):
-    api_key = get_secret_from_vault('api1', 'key')
-    url = "https://api.opensea.io/api/v2/collections?chain=ethereum&limit=10&order_by=market_cap"
-    headers = {
-        "accept": "application/json",
-        "x-api-key": api_key
-    }
-
-    # TODO add some error control
-    response = requests.get(url, headers=headers)
-    return response.text
-
-def save_collections_to_s3(**kwargs):
-    ti = kwargs['ti']
-    response_text = ti.xcom_pull(task_ids='retrieve_nft_collections')
-    bucket_name = get_secret_from_vault('aws3', 's3bucket')
-    s3_file_path = 'nft_collections_data.json'
-    
-    s3_hook = S3Hook(aws_conn_id='aws_conn')
-    with open('/tmp/nft_collections_data.json', 'w') as file:
-        file.write(response_text)
-    
-    s3_hook.load_file(
-        filename='/tmp/nft_collections_data.json',
-        key=s3_file_path,
-        bucket_name=bucket_name,
-        replace=True
-    )
-
-retrieve_task = PythonOperator(
-    task_id='retrieve_nft_collections',
-    python_callable=retrieve_nft_collections,
-    dag=dag,
-)
-
-save_task = PythonOperator(
-    task_id='save_collections_to_s3',
-    python_callable=save_collections_to_s3,
-    provide_context=True,
-    dag=dag,
-)
-
-retrieve_task >> save_task

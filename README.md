@@ -20,6 +20,16 @@ chmod 644 /vault/scripts/secrets.txt
 chmod +x /vault/scripts/vault-setup.sh
 ```
 
+building
+docker-compose -f docker-compose.airflow.yml build
+
+starting
+docker-compose -f docker-compose.airflow.yml up -d  
+
+stoping
+docker-compose -f docker-compose.airflow.yml down
+
+
 ## todo's
 
 

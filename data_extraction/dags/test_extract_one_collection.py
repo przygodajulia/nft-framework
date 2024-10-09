@@ -1,16 +1,21 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
-from airflow.hooks.S3_hook import S3Hook
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.models import Connection
 from airflow.utils.session import provide_session
 from datetime import datetime, timedelta
-import requests
 import hvac
+import requests
+import json
+# Set the path to include the airflow_utils directory
+# Get the directory one level up
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../airflow_utils')))
+# print("Current sys.path:", sys.path)
+# # Now import your functions
+# from airflow_utilsairflow_helpers import create_aws_connection, get_secret_from_vault
 
-VAULT_ADDR = 'http://vault:8200'
 
-# Helper functions for setting up connection
-# TODO - store function in some other place
+######################## Helper functions #########################
 
 def read_root_token():
     """
@@ -77,7 +82,7 @@ def get_secret_from_vault(path, key):
     except hvac.exceptions.InvalidRequest as e:
         print(f"Invalid request: {e}")
         return None
-
+    
 @provide_session
 def create_aws_connection(session=None):
     """
@@ -124,65 +129,87 @@ def create_aws_connection(session=None):
     else:
         print(f"Connection {conn_id} already exists.")
 
-# Create AWS connection before the DAG starts
-create_aws_connection()
+# create_aws_connection()
 
-# Test DAG definition
+######################## Prepare DAG #########################
+
+COLLECTION_SLUG = 'boredapeyachtclub'
+BASE_URL = 'https://api.opensea.io/api/v2/events/collection/'
+AFTER_TIMESTAMP = 1688169600  # July 1st, 2023
+BEFORE_TIMESTAMP = 1696118399  # September 30th, 2023
+S3_BUCKET = get_secret_from_vault('api1', 'key')
+S3_KEY_PREFIX = '/opensea_data/'
+
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2023, 8, 29),
+    'depends_on_past': False,
+    'start_date': datetime(2024, 1, 1),
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(minutes=5)
 }
 
-dag = DAG(
-    'nft_collections_to_s3',
-    default_args=default_args,
-    description='A test DAG to retrieve NFT collections and save them to S3',
-    schedule_interval=None,
-    catchup=False
-)
+dag = DAG('opensea_collection_events_to_s3',
+          default_args=default_args,
+          schedule_interval='@daily',
+          catchup=False)
 
-def retrieve_nft_collections(**kwargs):
+# Task to get events from OpenSea API
+def get_opensea_events(cursor=None):
+
     api_key = get_secret_from_vault('api1', 'key')
-    url = "https://api.opensea.io/api/v2/collections?chain=ethereum&limit=10&order_by=market_cap"
+
+    url = f"{BASE_URL}{COLLECTION_SLUG}"
+    params = {
+        'after': AFTER_TIMESTAMP,
+        'before': BEFORE_TIMESTAMP,
+        'event_type': ['sale', 'transfer', 'redemption'],
+        'limit': 50
+    }
+    if cursor:
+        params['next'] = cursor
+    
     headers = {
         "accept": "application/json",
-        "x-api-key": api_key
+        "X-API-KEY": api_key
     }
 
-    # TODO add some error control
-    response = requests.get(url, headers=headers)
-    return response.text
+    response = requests.get(url, params=params, headers=headers)
+    response_data = response.json()
 
-def save_collections_to_s3(**kwargs):
-    ti = kwargs['ti']
-    response_text = ti.xcom_pull(task_ids='retrieve_nft_collections')
-    bucket_name = get_secret_from_vault('aws3', 's3bucket')
-    s3_file_path = 'nft_collections_data.json'
-    
+    # Return events and cursor for the next page
+    return response_data, response_data.get('next')
+
+# Task to load data to S3
+def load_to_s3(events, filename):
+    s3_bucket = get_secret_from_vault("aws3", "s3bucket")
     s3_hook = S3Hook(aws_conn_id='aws_conn')
-    with open('/tmp/nft_collections_data.json', 'w') as file:
-        file.write(response_text)
-    
-    s3_hook.load_file(
-        filename='/tmp/nft_collections_data.json',
-        key=s3_file_path,
-        bucket_name=bucket_name,
+    s3_hook.load_string(
+        string_data=json.dumps(events), 
+        key=f"{S3_KEY_PREFIX}{filename}.json", 
+        bucket_name=s3_bucket, 
         replace=True
     )
 
-retrieve_task = PythonOperator(
-    task_id='retrieve_nft_collections',
-    python_callable=retrieve_nft_collections,
-    dag=dag,
+# Task to extract data and store in S3
+def extract_and_store():
+    cursor = None
+    page = 1
+    while True:
+        events, next_cursor = get_opensea_events(cursor)
+        
+        if not events:
+            break
+
+        load_to_s3(events, f'opensea_events_page_{page}')
+        
+        cursor = next_cursor
+        page += 1
+
+# Define Airflow tasks
+extract_task = PythonOperator(
+    task_id='extract_and_store_task',
+    python_callable=extract_and_store,
+    dag=dag
 )
 
-save_task = PythonOperator(
-    task_id='save_collections_to_s3',
-    python_callable=save_collections_to_s3,
-    provide_context=True,
-    dag=dag,
-)
-
-retrieve_task >> save_task
+extract_task
