@@ -6,6 +6,8 @@
 /vault/scripts/init-output.txt
 /vault/data/
 /shared-secrets/
+/data_processing/notebooks/.ipynb_checkpoints
+/data_processing/utils/.ipynb_checkpoints
 
 # Visual studio defaults
 __pycache__/

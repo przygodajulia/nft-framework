@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    networks:
+      - vault-network
+    volumes:
+      - ./vault/config:/vault/config
+      - ./vault/data:/vault/file
+      - ./vault/tls:/vault/tls
+      - ./vault/scripts:/vault/scripts
+      - ./shared-secrets:/vault/shared-secrets
+    command: /bin/sh -c "vault server -config=/vault/config/vault-config.hcl"
+    restart: unless-stopped
+
+volumes:
+  shared-secrets: {}
+
+networks:
+  vault-network:
