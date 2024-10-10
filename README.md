@@ -20,7 +20,7 @@ chmod 644 /vault/scripts/secrets.txt
 chmod +x /vault/scripts/vault-setup.sh
 ```
 
-building
+building (only airflow service requires some dependencies)
 docker-compose -f docker-compose.airflow.yml build
 
 starting
