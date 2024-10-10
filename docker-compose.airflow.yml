@@ -23,8 +23,8 @@ services:
 
   airflow-webserver:
     build:
-      context: .                     # Set the context to the current directory
-      dockerfile: Dockerfile.airflow  # Use the Dockerfile located in the root directory
+      context: .
+      dockerfile: Dockerfile.airflow
     container_name: airflow-webserver
     depends_on:
       airflow-init:
@@ -35,13 +35,12 @@ services:
       - "8081:8080"
     networks:
       - airflow-network
-      - vault-network   # Include the vault-network
+      - vault-network
     command: webserver
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./shared-secrets:/shared-secrets
 
-  # Airflow scheduler
   airflow-scheduler:
     build:
       context: .
@@ -55,13 +54,12 @@ services:
       - ./data_extraction/airflow.env
     networks:
       - airflow-network
-      - vault-network   # Include the vault-network
+      - vault-network
     command: scheduler
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./shared-secrets:/shared-secrets
 
-  # Airflow worker
   airflow-worker:
     build:
       context: .
@@ -75,13 +73,12 @@ services:
       - ./data_extraction/airflow.env
     networks:
       - airflow-network
-      - vault-network   # Include the vault-network
+      - vault-network
     command: celery worker
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./shared-secrets:/shared-secrets
 
-  # Airflow initialization service
   airflow-init:
     build:
       context: .
@@ -97,7 +94,7 @@ services:
     entrypoint: /bin/bash -c "airflow db init && airflow users create --username admin --password admin --firstname Airflow --lastname Admin --role Admin --email admin@example.com"
     networks:
       - airflow-network
-      - vault-network   # Include the vault-network
+      - vault-network 
     volumes:
       - ./data_extraction/dags:/opt/airflow/dags
       - ./shared-secrets:/shared-secrets
@@ -105,4 +102,4 @@ services:
 networks:
   airflow-network:
     driver: bridge
-  vault-network:  # Define the vault network
+  vault-network:
