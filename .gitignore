@@ -1,4 +1,4 @@
-# My files
+# My files and folders
 /data_storage/aws.env 
 /data_extraction/airflow.env
 /data_extraction/api.env
@@ -6,8 +6,10 @@
 /vault/scripts/init-output.txt
 /vault/data/
 /shared-secrets/
-/data_processing/notebooks/.ipynb_checkpoints
-/data_processing/utils/.ipynb_checkpoints
+/data_processing/notebooks/.ipynb_checkpoints/
+/data_processing/notebooks/data_transformations/.ipynb_checkpoints/
+/data_processing/notebooks/wash_trading_algorithms/.ipynb_checkpoints/
+/data_processing/utils/.ipynb_checkpoints/
 
 # Visual studio defaults
 __pycache__/
