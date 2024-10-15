@@ -80,12 +80,12 @@ def create_aws_connection(session=None):
         logging.info(f"Connection {conn_id} already exists.")
 
 ######################## Prepare DAG #########################
-COLLECTION_SLUGS = ['cryptopunks'] # Selected by market cap
+COLLECTION_SLUGS = ['courtyard-nft'] # Selected by market cap pudgypenguins cryptopunks etc
 BASE_URL = 'https://api.opensea.io/api/v2/events/collection/'
-AFTER_TIMESTAMP = 1688169600  # July 1st, 2023
-BEFORE_TIMESTAMP = 1696118399  # September 30th, 2023
+AFTER_TIMESTAMP = 1719792000  # July 1st, 2024
+BEFORE_TIMESTAMP = 1725081599  # September 30th, 2024
 S3_BUCKET = get_secret_from_vault('api1', 'key')
-S3_KEY_PREFIX = 'raw/opensea_data/'
+S3_KEY_PREFIX = 'raw/opensea_nft_data/'
 
 default_args = {
     'owner': 'airflow',
