@@ -27,7 +27,7 @@ starting
 docker-compose -f docker-compose.airflow.yml up -d  
 
 stoping
-docker-compose -f docker-compose.airflow.yml down
+docker-compose -f docker-compose.airflow.yml down/stop
 
 
 ## todo's
