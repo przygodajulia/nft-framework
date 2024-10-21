@@ -11,6 +11,7 @@ RUN apt-get update && \
         boto3 \
         pyspark \
         hvac \
+        pandas \
         apache-airflow-providers-apache-spark \
         grpcio-status && \
     # Clean up to reduce image size
@@ -24,6 +25,7 @@ RUN pip install \
         boto3 \
         pyspark \
         hvac \
+        pandas \
         azure-servicebus \
         apache-airflow-providers-apache-spark \
         grpcio-status
