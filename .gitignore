@@ -8,6 +8,7 @@
 /shared-secrets/
 /data_processing/notebooks/.ipynb_checkpoints/
 /data_processing/notebooks/data_transformations/.ipynb_checkpoints/
+/data_processing/notebooks/exploratory_data_analysis/.ipynb_checkpoints/
 /data_processing/notebooks/wash_trading_algorithms/.ipynb_checkpoints/
 /data_processing/utils/.ipynb_checkpoints/
 
